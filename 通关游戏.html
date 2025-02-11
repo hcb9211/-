@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>迷宫冒险</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(45deg, #1a1a1a, #4a4a4a);
+            font-family: 'Arial', sans-serif;
+        }
+
+        .game-container {
+            position: relative;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+        }
+
+        .level {
+            display: grid;
+            gap: 2px;
+            background: #333;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            background: #666;
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .player {
+            background: #4CAF50;
+            box-shadow: 0 0 10px #4CAF50;
+            border-radius: 50%;
+            transform: scale(0.8);
+        }
+
+        .target {
+            background: #FF4081;
+            box-shadow: 0 0 10px #FF4081;
+            animation: pulse 1.5s infinite;
+        }
+
+        .obstacle {
+            background: #607D8B;
+            box-shadow: 0 0 10px #607D8B;
+        }
+
+        .score-board {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 20px;
+            text-shadow: 0 0 10px cyan;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.9);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(0.9);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="game-container">
+        <div class="score-board">步数: <span id="steps">0</span></div>
+        <div class="level" id="level"></div>
+    </div>
+
+    <script>
+        const levelConfig = [
+            {
+                size: 5,
+                player: [0, 0],
+                target: [4, 4],
+                obstacles: [[1, 1], [2, 3], [3, 1]]
+            },
+            {
+                size: 8,
+                player: [2, 0],
+                target: [7, 5],
+                obstacles: [[1, 1], [3, 3], [4, 4], [5, 2], [6, 6]]
+            }
+        ];
+
+        let currentLevel = 0;
+        let steps = 0;
+        let playerPos = [0, 0];
+        const levelElement = document.getElementById('level');
+        const stepsElement = document.getElementById('steps');
+
+        function initGame() {
+            const config = levelConfig[currentLevel];
+            levelElement.style.gridTemplateColumns =
+                `repeat(${config.size}, 40px)`;
+
+            levelElement.innerHTML = '';
+            playerPos = [...config.player];
+            steps = 0;
+            stepsElement.textContent = steps;
+
+            for (let i = 0; i < config.size; i++) {
+                for (let j = 0; j < config.size; j++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+
+                    if (i === config.target[0] && j === config.target[1]) {
+                        cell.classList.add('target');
+                    } else if (config.obstacles.some(
+                        ([x, y]) => x === i && y === j)) {
+                        cell.classList.add('obstacle');
+                    }
+
+                    if (i === playerPos[0] && j === playerPos[1]) {
+                        cell.classList.add('player');
+                    }
+
+                    levelElement.appendChild(cell);
+                }
+            }
+        }
+
+        function movePlayer(dx, dy) {
+            const config = levelConfig[currentLevel];
+            const newX = playerPos[0] + dx;
+            const newY = playerPos[1] + dy;
+
+            if (newX >= 0 && newX < config.size &&
+                newY >= 0 && newY < config.size &&
+                !config.obstacles.some(([x, y]) => x === newX && y === newY)) {
+                playerPos = [newX, newY];
+                steps++;
+                stepsElement.textContent = steps;
+                updateDisplay();
+                checkWin();
+            }
+        }
+
+        function updateDisplay() {
+            const cells = document.getElementsByClassName('cell');
+            const config = levelConfig[currentLevel];
+
+            for (let i = 0; i < config.size; i++) {
+                for (let j = 0; j < config.size; j++) {
+                    const index = i * config.size + j;
+                    cells[index].classList.remove('player');
+
+                    if (i === playerPos[0] && j === playerPos[1]) {
+                        cells[index].classList.add('player');
+                    }
+                }
+            }
+        }
+
+        function checkWin() {
+            const config = levelConfig[currentLevel];
+            if (playerPos[0] === config.target[0] &&
+                playerPos[1] === config.target[1]) {
+                if (currentLevel < levelConfig.length - 1) {
+                    currentLevel++;
+                    setTimeout(() => {
+                        alert(`关卡${currentLevel} 解锁！`);
+                        initGame();
+                    }, 300);
+                } else {
+                    setTimeout(() => {
+                        alert('🎉 恭喜通关！总步数: ' + steps);
+                        currentLevel = 0;
+                        initGame();
+                    }, 300);
+                }
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowUp': movePlayer(-1, 0); break;
+                case 'ArrowDown': movePlayer(1, 0); break;
+                case 'ArrowLeft': movePlayer(0, -1); break;
+                case 'ArrowRight': movePlayer(0, 1); break;
+            }
+        });
+
+        // 添加触摸事件处理
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // 阻止默认滚动行为
+        });
+
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+
+            const dx = touchEndX - touchStartX;
+            const dy = touchEndY - touchStartY;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                // 水平滑动
+                if (dx > 0) {
+                    movePlayer(0, 1); // 向右
+                } else {
+                    movePlayer(0, -1); // 向左
+                }
+            } else {
+                // 垂直滑动
+                if (dy > 0) {
+                    movePlayer(1, 0); // 向下
+                } else {
+                    movePlayer(-1, 0); // 向上
+                }
+            }
+        });
+
+        initGame();
+    </script>
+</body>
+
+</html>
